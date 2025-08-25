@@ -1,3 +1,268 @@
+// Página de teste integrada
+app.get('/test', (req, res) => {
+    res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>WhatsApp API - Teste</title>
+        <style>
+            body { 
+                font-family: Arial, sans-serif; 
+                max-width: 600px; 
+                margin: 50px auto; 
+                padding: 20px; 
+                background: linear-gradient(135deg, #25D366, #128C7E);
+                min-height: 100vh;
+            }
+            .container { 
+                background: white; 
+                padding: 30px; 
+                border-radius: 15px; 
+                box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            }
+            .header {
+                text-align: center;
+                margin-bottom: 30px;
+                color: #25D366;
+            }
+            input, textarea, button { 
+                width: 100%; 
+                padding: 12px; 
+                margin: 10px 0; 
+                border: 2px solid #ddd; 
+                border-radius: 8px; 
+                font-size: 16px;
+                box-sizing: border-box;
+            }
+            button { 
+                background: #25D366; 
+                color: white; 
+                cursor: pointer; 
+                font-weight: bold;
+                transition: all 0.3s;
+                border: none;
+            }
+            button:hover { 
+                background: #128C7E; 
+                transform: translateY(-1px);
+            }
+            .status { 
+                padding: 15px; 
+                margin: 15px 0; 
+                border-radius: 8px; 
+                font-weight: bold;
+            }
+            .success { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+            .error { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+            .info { background: #cce7ff; color: #0c5499; border-left: 4px solid #007bff; }
+            .warning { background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; }
+            
+            .action-buttons {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin: 20px 0;
+            }
+            
+            .form-group {
+                margin: 15px 0;
+            }
+            
+            label {
+                display: block;
+                margin-bottom: 5px;
+                font-weight: bold;
+                color: #333;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🤖 WhatsApp API</h1>
+                <p>Teste sua API de WhatsApp</p>
+            </div>
+            
+            <div class="status info">
+                <h3>📊 Status da Conexão:</h3>
+                <p id="status">🔄 Verificando...</p>
+                <button onclick="checkStatus()" style="width: auto; padding: 8px 16px;">🔄 Atualizar</button>
+            </div>
+            
+            <div class="action-buttons">
+                <button onclick="connectWhatsApp()">📱 Conectar WhatsApp</button>
+                <button onclick="showQR()">📋 Ver QR Code</button>
+                <button onclick="restartConnection()">🔄 Reiniciar</button>
+                <button onclick="checkStatus()">📊 Status</button>
+            </div>
+            
+            <div class="form-group">
+                <h3>📤 Enviar Mensagem de Teste:</h3>
+                <label for="number">Número (com DDI):</label>
+                <input type="text" id="number" placeholder="Exemplo: 5511999999999" value="5511999999999">
+                
+                <label for="message">Mensagem:</label>
+                <textarea id="message" rows="3" placeholder="Digite sua mensagem...">🤖 Olá! Este é um teste da API WhatsApp funcionando perfeitamente! ✅</textarea>
+                
+                <button onclick="sendMessage()">🚀 Enviar Mensagem</button>
+            </div>
+            
+            <div id="result"></div>
+            
+            <div class="status warning" style="margin-top: 30px;">
+                <h4>💡 Como usar:</h4>
+                <ol>
+                    <li><strong>Conectar:</strong> Clique em "📱 Conectar WhatsApp"</li>
+                    <li><strong>QR Code:</strong> Aguarde 10s e clique "📋 Ver QR Code"</li>
+                    <li><strong>Escanear:</strong> Use o WhatsApp do celular para escanear</li>
+                    <li><strong>Testar:</strong> Coloque seu número e teste o envio</li>
+                </ol>
+            </div>
+        </div>
+        
+        <script>
+            // Função para mostrar resultados
+            function showResult(message, type = 'info') {
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = '<div class="status ' + type + '">' + message + '</div>';
+                
+                // Auto-limpar após 8 segundos
+                setTimeout(() => {
+                    if (resultDiv.innerHTML.includes(message)) {
+                        resultDiv.innerHTML = '';
+                    }
+                }, 8000);
+            }
+            
+            // Verificar status
+            async function checkStatus() {
+                try {
+                    showResult('🔄 Verificando status...', 'info');
+                    
+                    const response = await fetch('/status');
+                    const data = await response.json();
+                    
+                    let statusText = '';
+                    let statusClass = 'info';
+                    
+                    if (data.connected) {
+                        statusText = '✅ <strong>CONECTADO</strong><br>';
+                        statusText += '👤 Usuário: ' + (data.user?.name || 'Nome não disponível') + '<br>';
+                        statusText += '📱 Número: ' + (data.user?.id?.split(':')[0] || 'Número não disponível');
+                        statusClass = 'success';
+                    } else if (data.connecting) {
+                        statusText = '🔄 <strong>CONECTANDO...</strong><br>Aguarde ou use "Ver QR Code"';
+                        statusClass = 'warning';
+                    } else {
+                        statusText = '❌ <strong>DESCONECTADO</strong><br>Use "Conectar WhatsApp"';
+                        statusClass = 'error';
+                    }
+                    
+                    statusText += '<br><small>📅 ' + new Date(data.timestamp).toLocaleString('pt-BR') + '</small>';
+                    
+                    document.getElementById('status').innerHTML = statusText;
+                    document.getElementById('status').className = statusClass;
+                    
+                    showResult('✅ Status atualizado!', 'success');
+                    
+                } catch (error) {
+                    document.getElementById('status').innerHTML = '❌ <strong>ERRO</strong><br>Não foi possível verificar o status';
+                    showResult('❌ Erro ao verificar status: ' + error.message, 'error');
+                }
+            }
+            
+            // Conectar WhatsApp
+            async function connectWhatsApp() {
+                try {
+                    showResult('🔄 Iniciando conexão com WhatsApp...', 'info');
+                    
+                    const response = await fetch('/connect');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showResult('✅ ' + data.message + '<br>💡 Aguarde alguns segundos e clique em "Ver QR Code"', 'success');
+                        
+                        // Auto-verificar status após 3 segundos
+                        setTimeout(checkStatus, 3000);
+                    } else {
+                        showResult('❌ Erro: ' + data.message, 'error');
+                    }
+                } catch (error) {
+                    showResult('❌ Erro de conexão: ' + error.message, 'error');
+                }
+            }
+            
+            // Mostrar QR Code
+            function showQR() {
+                showResult('📱 Abrindo QR Code em nova aba...', 'info');
+                window.open('/qr', '_blank', 'width=500,height=600');
+            }
+            
+            // Reiniciar conexão
+            async function restartConnection() {
+                try {
+                    showResult('🔄 Reiniciando conexão...', 'warning');
+                    
+                    const response = await fetch('/restart', { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showResult('✅ ' + data.message + '<br>💡 Agora você pode usar "Conectar WhatsApp" novamente', 'success');
+                        setTimeout(checkStatus, 2000);
+                    } else {
+                        showResult('❌ Erro ao reiniciar: ' + data.message, 'error');
+                    }
+                } catch (error) {
+                    showResult('❌ Erro: ' + error.message, 'error');
+                }
+            }
+            
+            // Enviar mensagem
+            async function sendMessage() {
+                const number = document.getElementById('number').value.trim();
+                const message = document.getElementById('message').value.trim();
+                
+                if (!number || !message) {
+                    showResult('❌ Preencha o número e a mensagem!', 'error');
+                    return;
+                }
+                
+                if (number.length < 10) {
+                    showResult('❌ Número inválido! Use formato: 5511999999999', 'error');
+                    return;
+                }
+                
+                try {
+                    showResult('📤 Enviando mensagem para ' + number + '...', 'info');
+                    
+                    const response = await fetch('/send', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ number, message })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showResult('✅ <strong>Mensagem enviada com sucesso!</strong><br>📱 Para: ' + number + '<br>💬 Texto: ' + message.substring(0, 100) + '...', 'success');
+                    } else {
+                        showResult('❌ Falha no envio: ' + data.message, 'error');
+                    }
+                } catch (error) {
+                    showResult('❌ Erro no envio: ' + error.message, 'error');
+                }
+            }
+            
+            // Verificar status ao carregar
+            checkStatus();
+            
+            // Auto-atualizar status a cada 15 segundos
+            setInterval(checkStatus, 15000);
+        </script>
+    </body>
+    </html>
+    `);
+});
 const express = require('express');
 const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
